@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Wallpaper — Excel Shortcuts</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --accent:        #217346;
+            --accent2:       #41b883;
+            --bg-dark:       #0d1117;
+            --glass-bg:      rgba(255,255,255,0.045);
+            --glass-border:  rgba(255,255,255,0.09);
+            --text:          #e6edf3;
+            --muted:         #8b949e;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+            background: var(--bg-dark);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            overflow: hidden;
+        }
+
+        /* Subtle background glow on the right only */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 55% 70% at 85% 50%, rgba(33,115,70,0.14) 0%, transparent 70%),
+                linear-gradient(160deg, #0d1117 0%, #0f1b25 100%);
+            z-index: 0;
+        }
+
+        /* ── Right-side column, left side stays empty ── */
+        .right-col {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 38%;          /* tweak to taste */
+            min-width: 500px;
+            max-width: 680px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 1.4rem 1.4rem 1.4rem 1.2rem;
+        }
+
+        /* ── CLOCK STRIP (top) ─────────────────────────────── */
+        .clock-strip {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 1.4rem;
+            padding: 0.75rem 1.2rem;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px 14px 0 0;
+            border-bottom: 1px solid rgba(65,184,131,0.15);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 -2px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07);
+        }
+
+        .excel-badge {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #1a5e38, #217346);
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+            flex-shrink: 0;
+            box-shadow: 0 3px 10px rgba(33,115,70,0.45);
+            letter-spacing: -1px;
+        }
+
+        #clock {
+            font-size: 2.4rem;
+            font-weight: 200;
+            letter-spacing: -1.5px;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            color: #fff;
+            text-shadow: 0 0 40px rgba(65,184,131,0.25);
+            flex-shrink: 0;
+        }
+
+        .date-block {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            border-left: 1px solid rgba(255,255,255,0.08);
+            padding-left: 1.2rem;
+        }
+
+        .date-greg {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text);
+            opacity: 0.9;
+        }
+
+        .date-hijri {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        /* ── SHORTCUTS PANEL (below clock) ─────────────────── */
+        .shortcuts-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.9rem 1rem;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-top: none;
+            border-radius: 0 0 14px 14px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+
+        .shortcuts-panel::-webkit-scrollbar       { width: 3px; }
+        .shortcuts-panel::-webkit-scrollbar-track { background: transparent; }
+        .shortcuts-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+        /* ── Multi-column shortcut layout ───────────────────── */
+        .all-categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 1.2rem;
+        }
+
+        .category { margin-bottom: 0.7rem; }
+
+        .category-title {
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--accent2);
+            padding-bottom: 0.3rem;
+            border-bottom: 1px solid rgba(65,184,131,0.2);
+            margin-bottom: 0.3rem;
+        }
+
+        .shortcut-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.18rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .shortcut-desc {
+            font-size: 0.7rem;
+            color: var(--muted);
+            flex: 1;
+            padding-right: 0.4rem;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .keys {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1px 5px;
+            min-width: 20px;
+            height: 18px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-bottom-width: 2px;
+            border-radius: 4px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .plus {
+            font-size: 0.55rem;
+            color: var(--muted);
+            margin: 0 1px;
+        }
+
+        .footer-note {
+            margin-top: 0.6rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.58rem;
+            color: var(--muted);
+            text-align: center;
+            letter-spacing: 0.04em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="right-col">
+
+        <!-- ── Clock strip ── -->
+        <div class="clock-strip">
+            <div class="excel-badge">X</div>
+            <div id="clock">00:00:00</div>
+            <div class="date-block">
+                <div class="date-greg" id="gregorian">Loading…</div>
+                <div class="date-hijri" id="hijri">Loading…</div>
+            </div>
+        </div>
+
+        <!-- ── Shortcuts ── -->
+        <div class="shortcuts-panel">
+            <div class="all-categories">
+
+                <!-- Navigation -->
+                <div class="category">
+                    <div class="category-title">Navigation</div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Move to cell A1</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Home</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Move to last used cell</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>End</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Jump to data edge</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>↑↓←→</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Go to specific cell</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Next sheet</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>PgDn</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Previous sheet</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>PgUp</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Find &amp; Replace</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>H</kbd></span></div>
+                </div>
+
+                <!-- Selection -->
+                <div class="category">
+                    <div class="category-title">Selection</div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Select entire column</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Select entire row</span><span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Extend to data edge</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>↑↓</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Select all</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>A</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Select to last used cell</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>End</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Add non-adjacent range</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Click</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Select current region</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>*</kbd></span></div>
+                </div>
+
+                <!-- Editing -->
+                <div class="category">
+                    <div class="category-title">Editing</div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Edit active cell</span><span class="keys"><kbd>F2</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Fill down</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Fill right</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>R</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Flash Fill</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>E</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Insert current date</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>;</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Insert current time</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>;</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Insert row / column</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>+</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Delete row / column</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>−</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Undo / Redo</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd><span class="plus">/</span><kbd>Y</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Copy / Paste</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>C</kbd><span class="plus">/</span><kbd>V</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Paste Special</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>V</kbd></span></div>
+                </div>
+
+                <!-- Formulas -->
+                <div class="category">
+                    <div class="category-title">Formulas</div>
+                    <div class="shortcut-row"><span class="shortcut-desc">AutoSum</span><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>=</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Toggle formula view</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>`</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Absolute / relative ref</span><span class="keys"><kbd>F4</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Insert function dialog</span><span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>F3</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Recalculate workbook</span><span class="keys"><kbd>F9</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Trace dependents</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>]</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Trace precedents</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>[</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Evaluate formula</span><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>M</kbd><span class="plus">+</span><kbd>V</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Enter array formula</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Enter</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Name Manager</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F3</kbd></span></div>
+                </div>
+
+                <!-- Formatting -->
+                <div class="category">
+                    <div class="category-title">Formatting</div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Format Cells dialog</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>1</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Bold / Italic / Underline</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>B/I/U</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Strikethrough</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>5</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Number format</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>!</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Currency format</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>$</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Percent format</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>%</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Date format</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>#</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Scientific format</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>^</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Increase / Decrease font</span><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>H</kbd><span class="plus">+</span><kbd>FG/FK</kbd></span></div>
+                </div>
+
+                <!-- Workbook & Views -->
+                <div class="category">
+                    <div class="category-title">Workbook &amp; Views</div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Save</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Save As</span><span class="keys"><kbd>F12</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">New workbook</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>N</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Open workbook</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>O</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Print</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>P</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Close workbook</span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>W</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Freeze / unfreeze panes</span><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>W</kbd><span class="plus">+</span><kbd>F</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Rename sheet</span><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>O</kbd><span class="plus">+</span><kbd>H</kbd><span class="plus">+</span><kbd>R</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Insert new sheet</span><span class="keys"><kbd>Shift</kbd><span class="plus">+</span><kbd>F11</kbd></span></div>
+                    <div class="shortcut-row"><span class="shortcut-desc">Zoom in / out</span><span class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>W</kbd><span class="plus">+</span><kbd>Q</kbd></span></div>
+                </div>
+
+            </div><!-- /all-categories -->
+
+            <div class="footer-note">✦ Excel for Windows &nbsp;·&nbsp; Use <kbd style="font-size:0.55rem;padding:1px 4px;">Fn</kbd> key on laptops for F-key shortcuts</div>
+        </div><!-- /shortcuts-panel -->
+
+    </div><!-- /right-col -->
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString([], {
+                hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            const pad = n => String(n).padStart(2, '0');
+            const greg = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}`;
+            document.getElementById('gregorian').innerText = greg;
+
+            const hijriParts = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', {
+                day: 'numeric', month: 'numeric', year: 'numeric'
+            }).formatToParts(now);
+            const hY = hijriParts.find(p => p.type === 'year')?.value  ?? '----';
+            const hM = hijriParts.find(p => p.type === 'month')?.value ?? '--';
+            const hD = hijriParts.find(p => p.type === 'day')?.value   ?? '--';
+            document.getElementById('hijri').innerText =
+                `${hY}/${pad(hM)}/${pad(hD)}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
